@@ -105,43 +105,32 @@ def generate_pdf_report(doc_type, summary, results, score):
     for r in results:
         label = r['analysis'].get('label', 'Low')
         
-        # Filter for relevant risks
         if label in ["High", "Medium"]:
-            # Risk Header
-            pdf.set_font("Arial", 'B', 11)
-            if label == "High": pdf.set_text_color(220, 53, 69) # Red
-            else: pdf.set_text_color(255, 140, 0) # Orange
+            smart_title = r['analysis'].get('clause_title', r['header'])
+            law = r['analysis'].get('legal_reference', 'N/A') # Get Law
             
-            header = clean_text(r['header'])
-            if len(header) > 80: header = header[:80] + "..."
-            pdf.cell(0, 8, f"[{label.upper()}] {header}", ln=True)
+            pdf.set_font("Arial", 'B', 10)
+            if label == "High": pdf.set_text_color(220, 53, 69)
+            else: pdf.set_text_color(255, 140, 0)
             
-            # Reset color
+            pdf.cell(0, 6, f"[{label.upper()}] {clean_text(smart_title)}", ln=True)
             pdf.set_text_color(0, 0, 0)
             
-            # Issue
-            pdf.set_font("Arial", 'B', 10)
-            pdf.cell(0, 6, "Risk Analysis:", ln=True)
-            pdf.set_font("Arial", '', 10)
-            pdf.multi_cell(epw, 5, clean_text(r['analysis']['explanation']))
-            pdf.ln(2)
+            pdf.set_font("Arial", '', 9)
+            pdf.multi_cell(epw, 5, "Risk: " + clean_text(r['analysis']['explanation']))
             
-            # Recommendation
-            pdf.set_font("Arial", 'B', 10)
-            pdf.set_text_color(0, 100, 0) # Green for advice
-            pdf.cell(0, 6, "Recommendation:", ln=True)
-            pdf.set_font("Arial", 'I', 10)
+            # PRINT THE LAW
+            pdf.set_font("Arial", 'B', 9)
+            pdf.multi_cell(epw, 5, "Statutory Ref: " + clean_text(law))
             
-            suggestion = r['analysis'].get('alternative_clause', 'Review with legal counsel.')
-            pdf.multi_cell(epw, 5, clean_text(suggestion))
+            pdf.set_font("Arial", 'I', 9)
+            pdf.set_text_color(34, 139, 34) 
+            pdf.multi_cell(epw, 5, "Advice: " + clean_text(r['analysis']['alternative_clause']))
+            pdf.set_text_color(0, 0, 0)
             
-            # Separator
-            pdf.ln(5)
-            pdf.set_draw_color(200, 200, 200)
+            pdf.ln(4)
+            pdf.set_draw_color(220, 220, 220)
             pdf.line(15, pdf.get_y(), 15 + epw, pdf.get_y())
-            pdf.ln(5)
-            
-            # Reset text color for next loop
-            pdf.set_text_color(0, 0, 0)
+            pdf.ln(4)
 
     return bytes(pdf.output(dest='S'))

@@ -12,53 +12,48 @@ def call_llm(prompt, is_json=True):
         completion = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": "You are a strict Legal Auditor AI. Output only factual analysis based on the provided text. Do not describe yourself."}, 
+                {"role": "system", "content": "You are an expert Indian Legal Auditor. You know the Indian Contract Act, 1872 inside out. Output valid JSON only."}, 
                 {"role": "user", "content": prompt}
             ], 
             response_format={"type": "json_object"} if is_json else None,
-            temperature=0.1 
+            temperature=0.3
         )
         content = completion.choices[0].message.content
         return json.loads(content) if is_json else content.strip()
     except Exception as e:
-        # Fallback 
         return {
+            "clause_title": "General Clause", 
             "clause_type": "General", 
-            "score": 10, 
+            "score": 0, 
             "label": "Low", 
             "explanation": "Standard clause.", 
-            "alternative_clause": "N/A",
+            "legal_reference": "Indian Contract Act, 1872",
+            "alternative_clause": "Ensure compliance with local laws.",
             "modality": "OBLIGATION",
             "is_ambiguous": False, 
-            "deviation": "None"
+            "deviation": "Standard"
         }
 
 def get_risk_assessment(clause_text):
     categories = "Termination, Indemnity, Non-Compete, Penalty, Arbitration, Payment, Liability, Intellectual Property, Auto-Renewal, Lock-in, Confidentiality, General"
     
+    # --- PROMPT WITH STATUTORY CITATION REQUEST ---
     prompt = f"""
-    Analyze this contract clause text strictly.
+    Analyze this clause under INDIAN LAW (Indian Contract Act, 1872).
 
-    TEXT: "{clause_text[:1500]}"
+    TEXT: "{clause_text[:2000]}"
 
-    TASK:
-    1. CATEGORY: Pick one from: [{categories}].
-    2. MODALITY: Pick ONE: "OBLIGATION", "RIGHT", "PROHIBITION", "DEFINITION".
-    3. AMBIGUITY: true/false.
-    4. SCORE: 0-100 (High Risk = >70).
-    5. LABEL: High/Medium/Low.
-
-    OUTPUT JSON:
-    {{
-        "clause_type": "Category",
-        "modality": "OBLIGATION", 
-        "is_ambiguous": false,
-        "score": 0,
-        "label": "Low",
-        "explanation": "Short risk summary.",
-        "deviation": "None",
-        "alternative_clause": "None"
-    }}
+    Generate JSON:
+    1. "clause_title": Professional title.
+    2. "clause_type": Choose from [{categories}].
+    3. "modality": "OBLIGATION", "RIGHT", "PROHIBITION", "DEFINITION".
+    4. "score": 0-100.
+    5. "label": "High", "Medium", "Low".
+    6. "explanation": Risk analysis.
+    7. "legal_reference": CITE THE LAW. (e.g., "Violates Section 27 of Indian Contract Act" for restraint of trade, or "Section 74" for penalties). If standard, write "Compliant with ICA 1872".
+    8. "deviation": "Standard" or "Strict".
+    9. "alternative_clause": A fairer version compliant with Indian Law.
+    10. "is_ambiguous": boolean.
     """
     return call_llm(prompt, is_json=True)
 
@@ -68,20 +63,18 @@ def calculate_overall_risk(results):
     return round(total / len(results)) if len(results) > 0 else 0
 
 def classify_contract(text):
-    prompt = f"Classify this legal document type (e.g. Employment Agreement). Return ONLY the name. Text: {text[:400]}"
+    prompt = f"Classify this legal document type. Return ONLY the name. Text: {text[:400]}"
     return call_llm(prompt, is_json=False)
 
 def generate_executive_summary(full_text):
-    # FIXED PROMPT: Explicitly tells AI to summarize the TEXT, not itself.
     prompt = f"""
-    Read the following contract text and provide a 3-bullet executive summary of the KEY RISKS and TERMS for the signing party.
-    Do NOT introduce yourself. Just give the bullets.
+    Write a 3-bullet Executive Summary of risks under Indian Law.
+    Do NOT use JSON or markdown bolding. Just plain text bullets.
     
-    CONTRACT TEXT:
-    {full_text[:3000]}
+    Text: {full_text[:3000]}
     """
     return call_llm(prompt, is_json=False)
 
 def get_chat_response(context, query):
-    prompt = f"Context: {context[:4000]}\nQuery: {query}\nAnswer briefly based on context."
+    prompt = f"Context: {context[:4000]}\nQuery: {query}\nAnswer citing Indian Law where possible."
     return call_llm(prompt, is_json=False)
