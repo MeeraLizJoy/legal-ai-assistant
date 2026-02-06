@@ -29,7 +29,7 @@ Built for the **[HCL GUVI Hackathon]**, this solution specifically addresses the
 
 ## ⚙️ Tech Stack
 
-* **Frontend:** [Streamlit](https://streamlit.io/)
+* **Frontend:** [Gradio]
 * **LLM Engine:** [Groq](https://groq.com/) (Llama-3.1-8b-instant) for high-speed legal reasoning.
 * **NLP & Processing:** * `spaCy` for Named Entity Recognition (NER).
     * `PyMuPDF` & `python-docx` for text extraction.
@@ -64,3 +64,5 @@ Built for the **[HCL GUVI Hackathon]**, this solution specifically addresses the
     ```
 
 ---
+
+link:- [https://meeralizjoy-legal-ai-assistant.hf.space]
