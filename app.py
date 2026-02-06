@@ -1,13 +1,15 @@
-import streamlit as st
+import streamlit as st  # Only import Streamlit first
 import os
 import json
 import datetime
+
+# --- CONFIG (MUST BE THE FIRST STREAMLIT COMMAND) ---
+st.set_page_config(page_title="NyayaSetu", layout="wide", page_icon="⚖️")
+
+# --- CUSTOM IMPORTS (Move these BELOW set_page_config) ---
 from processor import extract_text, segment_into_clauses, process_multilingual_clause, get_entities
 from legal_engine import get_risk_assessment, calculate_overall_risk, classify_contract, generate_executive_summary, get_chat_response
 from utils import format_entities, generate_pdf_report
-
-# --- CONFIG ---
-st.set_page_config(page_title="NyayaSetu", layout="wide", page_icon="⚖️")
 
 # --- CSS STYLING ---
 st.markdown("""
