@@ -4,7 +4,7 @@ import json
 import datetime
 
 # --- CONFIG (MUST BE THE FIRST STREAMLIT COMMAND) ---
-st.set_page_config(page_title="NyayaSetu", layout="wide", page_icon="⚖️")
+st.set_page_config(page_title="Legal AI Assistant", layout="wide", page_icon="⚖️")
 
 # --- CUSTOM IMPORTS (Move these BELOW set_page_config) ---
 from processor import extract_text, segment_into_clauses, process_multilingual_clause, get_entities
@@ -59,7 +59,7 @@ def count_knowledge_base():
 # --- SIDEBAR ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2666/2666505.png", width=80)
-    st.title("NyayaSetu 🇮🇳")
+    st.title("Legal AI Assistant 🇮🇳")
     kb_count = count_knowledge_base()
     st.metric("📚 Knowledge Base", f"{kb_count} Contracts", delta="Growing")
     uploaded_file = st.file_uploader("📂 Upload Contract", type=['pdf', 'docx', 'txt'])
@@ -206,12 +206,12 @@ if uploaded_file:
             
             # 5. Downloads
             d1, d2 = st.columns(2)
-            with d1: st.download_button("📄 Download PDF Report", st.session_state.pdf_bytes, "NyayaSetu_Report.pdf", "application/pdf")
+            with d1: st.download_button("📄 Download PDF Report", st.session_state.pdf_bytes, "Report.pdf", "application/pdf")
             with d2: st.download_button("📊 Download JSON Log", st.session_state.audit_json, "audit_log.json", "application/json")
 
     # --- TAB 2: CHAT ASSISTANT ---
     with tab2:
-        st.header("💬 Ask NyayaSetu")
+        st.header("💬 Ask Legal AI Assistant")
         st.write("Ask questions about specific clauses or Indian Law.")
         
         # Initialize chat history
