@@ -5,16 +5,18 @@ import os
 from langdetect import detect, DetectorFactory
 from legal_engine import call_llm
 import docx
+import streamlit as st
 
 DetectorFactory.seed = 0
 
-# Load Spacy
-try:
-    nlp = spacy.load("en_core_web_sm")
-except:
-    os.system("python -m spacy download en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
-
+@st.cache_resource
+def load_nlp():
+    try:
+        return spacy.load("en_core_web_sm")
+    except:
+        os.system("python -m spacy download en_core_web_sm")
+        return spacy.load("en_core_web_sm")
+    
 def extract_text(file_obj, file_extension):
     """Extracts text and fixes common formatting issues that confuse AI."""
     text = ""
@@ -85,3 +87,5 @@ def get_entities(text):
             entities.append({"text": clean_money, "label": "MONEY"})
             
     return entities
+
+nlp = load_nlp()
