@@ -9,4 +9,5 @@ groq==0.4.2
 python-dotenv==1.0.1
 pandas==2.2.3
 fpdf2==2.7.8
+gradio==4.19.2
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz
