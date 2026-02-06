@@ -6,6 +6,7 @@ from langdetect import detect, DetectorFactory
 from legal_engine import call_llm
 import docx
 import streamlit as st
+import fitz
 
 DetectorFactory.seed = 0
 
@@ -17,12 +18,14 @@ def load_nlp():
         os.system("python -m spacy download en_core_web_sm")
         return spacy.load("en_core_web_sm")
     
+nlp = load_nlp()
+    
 def extract_text(file_obj, file_extension):
     """Extracts text and fixes common formatting issues that confuse AI."""
     text = ""
     if file_extension == '.pdf':
         file_obj.seek(0)
-        doc = pymupdf.open(stream=file_obj.read(), filetype="pdf")
+        doc = fitz.open(stream=file_obj.read(), filetype="pdf")
         for page in doc:
             text += page.get_text("text") + "\n"
     elif file_extension == '.docx':
@@ -88,4 +91,3 @@ def get_entities(text):
             
     return entities
 
-nlp = load_nlp()
