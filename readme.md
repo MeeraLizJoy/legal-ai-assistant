@@ -1,6 +1,6 @@
-# NyayaSetu 🇮🇳 - AI Legal Shield for Indian SMEs
+# AI Legal Shield for Indian SMEs
 
-**NyayaSetu** is a sophisticated GenAI-powered legal assistant designed to help Indian Small and Medium Business (SME) owners understand complex contracts, identify risks, and receive actionable advice in plain language.
+**Legal AI Assistant** is a sophisticated GenAI-powered legal assistant designed to help Indian Small and Medium Business (SME) owners understand complex contracts, identify risks, and receive actionable advice in plain language.
 
 Built for the **[HCL GUVI Hackathon]**, this solution specifically addresses the challenges of the Indian legal landscape, including multilingual support (Hindi/English) and compliance with the **Indian Contract Act, 1872**.
 
@@ -42,8 +42,8 @@ Built for the **[HCL GUVI Hackathon]**, this solution specifically addresses the
 
 1.  **Clone the Repository**
     ```bash
-    git clone [https://github.com/your-username/nyayasetu-legal-ai.git](https://github.com/your-username/nyayasetu-legal-ai.git)
-    cd nyayasetu-legal-ai
+    git clone [https://github.com/your-username/nyayasetu-legal-ai.git](https://github.com/your-username/legal-ai-assistant.git)
+    cd legal-ai-assistant
     ```
 
 2.  **Install Dependencies**
