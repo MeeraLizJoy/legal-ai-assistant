@@ -1,12 +1,11 @@
-import pymupdf
+import fitz
 import re
 import spacy
 import os
-from langdetect import detect, DetectorFactory
-from legal_engine import call_llm
 import docx
 import streamlit as st
-import fitz
+from langdetect import detect, DetectorFactory
+from legal_engine import call_llm
 
 DetectorFactory.seed = 0
 
@@ -15,54 +14,71 @@ def load_nlp():
     try:
         return spacy.load("en_core_web_sm")
     except:
-        os.system("python -m spacy download en_core_web_sm")
+        from spacy.cli import download
+        download("en_core_web_sm")
         return spacy.load("en_core_web_sm")
     
 nlp = load_nlp()
     
 def extract_text(file_obj, file_extension):
-    """Extracts text and fixes common formatting issues that confuse AI."""
+    """Extracts text using the safe 'fitz' library."""
     text = ""
-    if file_extension == '.pdf':
-        file_obj.seek(0)
-        doc = fitz.open(stream=file_obj.read(), filetype="pdf")
-        for page in doc:
-            text += page.get_text("text") + "\n"
-    elif file_extension == '.docx':
-        doc = docx.Document(file_obj)
-        text = " ".join([para.text for para in doc.paragraphs])
-    elif file_extension == '.txt':
-        text = file_obj.read().decode('utf-8')
+    try:
+        if file_extension == '.pdf':
+            file_obj.seek(0)
+            doc = fitz.open(stream=file_obj.read(), filetype="pdf")
+            for page in doc:
+                text += page.get_text("text") + "\n"
+        elif file_extension == '.docx':
+            doc = docx.Document(file_obj)
+            text = " ".join([para.text for para in doc.paragraphs])
+        elif file_extension == '.txt':
+            text = file_obj.read().decode('utf-8')
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
     
-    # FIX: Merge hyphenated words and fix currency spacing
+    # Formatting Cleanup
     text = text.replace('Rs.\n', 'Rs. ').replace('Rs. ', 'Rs.')
+    text = re.sub(r'\n\s*\d+\s*\n', '\n', text) # Remove page numbers
     return text
 
 def segment_into_clauses(raw_text):
-    # Regex to catch "1. Title", "ARTICLE 1", "WHEREAS", etc.
-    pattern = r'(?:\n|^)(\d+\.\s+[A-Z][a-zA-Z\s]+|\bARTICLE\s+\d+\b|\bWHEREAS\b|[A-Z][A-Z\s]{5,}:)'
-    
-    parts = re.split(pattern, raw_text)
+    """
+    Robust segmentation that catches 1., 1.1, (a), Article, and All-Caps Headers.
+    """
     clauses = []
     
-    # If split failed, treat whole text as one context
-    if len(parts) < 2: 
+    # Combined regex for multiple numbering styles
+    # Group 1: Standard (1. Title)
+    # Group 2: Articles (ARTICLE 1)
+    # Group 3: Sub-clauses ((a) or 1.1)
+    # Group 4: Standard CAPS Headers (WHEREAS)
+    pattern = r'(?:\n|^)\s*(?:(\d+\.\s+[A-Za-z]+)|(ARTICLE\s+[IVX0-9]+)|(\([a-z0-9]+\)|[0-9]+\.[0-9]+)|(WHEREAS|NOW THEREFORE|IN WITNESS|DEFINITIONS|[A-Z\s]{5,}:))'
+    
+    # Split while keeping the delimiters (headers)
+    parts = re.split(f"({pattern})", raw_text)
+    
+    # If regex failed to split anything substantial, fallback to paragraph splitting
+    if len(parts) < 3: 
         return [{"header": "Contract Terms", "content": raw_text}]
 
-    # Reconstruct header + content pairs
-    # We skip index 0 if it's just preamble text
-    start_idx = 1 if len(parts) > 1 else 0
+    current_header = "Preamble / Recital"
     
-    for i in range(start_idx, len(parts)-1, 2):
-        header = parts[i].strip()
-        content = parts[i+1].strip()
+    for part in parts:
+        if not part or part.strip() == "": continue
         
-        # Clean up header (e.g. remove "WHEREAS" duplicates)
-        if header == "WHEREAS":
-            header = "Recital (Background)"
-            
-        if len(content.split()) > 5: # Filter out noise
-            clauses.append({"header": header, "content": content})
+        # Check if this part is a header (matches our regex pattern loosely)
+        is_header = re.match(r'^\s*(\d+\.|ARTICLE|\(|WHEREAS|[A-Z\s]{5,}:)', part)
+        
+        if is_header:
+            current_header = part.strip()
+            # Normalize "WHEREAS"
+            if "WHEREAS" in current_header.upper(): current_header = "Recital (Background)"
+        else:
+            # It is content
+            content = part.strip()
+            if len(content) > 20: # Filter out tiny noise
+                clauses.append({"header": current_header, "content": content})
             
     return clauses
 
@@ -78,16 +94,11 @@ def get_entities(text):
     doc = nlp(text)
     entities = [{"text": ent.text, "label": ent.label_} for ent in doc.ents]
     
-    # --- HARDCODED REGEX FIX FOR FINANCIALS ---
-    # Spacy misses "Rs. 50,000/-". Regex catches it.
     money_pattern = r'(?:Rs\.?|INR|₹)\s*[\d,]+(?:\.\d{2})?|Rupees\s+[a-zA-Z\s]+'
     matches = re.findall(money_pattern, text, re.IGNORECASE)
     
     for m in matches:
-        clean_money = m.strip()
-        # Only add if it looks like a valid amount
-        if len(clean_money) > 3:
-            entities.append({"text": clean_money, "label": "MONEY"})
+        if len(m.strip()) > 3:
+            entities.append({"text": m.strip(), "label": "MONEY"})
             
     return entities
-

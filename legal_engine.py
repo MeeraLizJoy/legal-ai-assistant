@@ -11,7 +11,10 @@ def call_llm(prompt, is_json=True):
         model_name = "llama-3.1-8b-instant" 
         completion = client.chat.completions.create(
             model=model_name,
-            messages=[{"role": "system", "content": "You are a Senior Legal Auditor. Be precise."}], 
+            messages=[
+                {"role": "system", "content": "You are a strict Legal Auditor AI. Output only factual analysis based on the provided text. Do not describe yourself."}, 
+                {"role": "user", "content": prompt}
+            ], 
             response_format={"type": "json_object"} if is_json else None,
             temperature=0.1 
         )
@@ -25,7 +28,7 @@ def call_llm(prompt, is_json=True):
             "label": "Low", 
             "explanation": "Standard clause.", 
             "alternative_clause": "N/A",
-            "modality": "OBLIGATION", # Default to Obligation if fail
+            "modality": "OBLIGATION",
             "is_ambiguous": False, 
             "deviation": "None"
         }
@@ -34,31 +37,27 @@ def get_risk_assessment(clause_text):
     categories = "Termination, Indemnity, Non-Compete, Penalty, Arbitration, Payment, Liability, Intellectual Property, Auto-Renewal, Lock-in, Confidentiality, General"
     
     prompt = f"""
-    Analyze this contract clause.
+    Analyze this contract clause text strictly.
 
-    Clause: "{clause_text[:1000]}"
+    TEXT: "{clause_text[:1500]}"
 
     TASK:
     1. CATEGORY: Pick one from: [{categories}].
-    2. MODALITY: You MUST pick exactly one:
-       - "OBLIGATION" (If it says 'shall', 'must', 'will', 'agrees to')
-       - "RIGHT" (If it says 'may', 'entitled to', 'reserves the right')
-       - "PROHIBITION" (If it says 'shall not', 'restricted from')
-       - "DEFINITION" (If it just defines a term)
-    3. AMBIGUITY: True if terms like 'reasonable', 'standard' are used without definition.
-    4. DEVIATION: Compare to standard Indian SME contracts.
-    5. RISK: Score (1-100) and Label (High/Medium/Low).
+    2. MODALITY: Pick ONE: "OBLIGATION", "RIGHT", "PROHIBITION", "DEFINITION".
+    3. AMBIGUITY: true/false.
+    4. SCORE: 0-100 (High Risk = >70).
+    5. LABEL: High/Medium/Low.
 
-    OUTPUT JSON ONLY:
+    OUTPUT JSON:
     {{
         "clause_type": "Category",
         "modality": "OBLIGATION", 
         "is_ambiguous": false,
         "score": 0,
         "label": "Low",
-        "explanation": "Summary...",
-        "deviation": "Standard",
-        "alternative_clause": "Fairer version..."
+        "explanation": "Short risk summary.",
+        "deviation": "None",
+        "alternative_clause": "None"
     }}
     """
     return call_llm(prompt, is_json=True)
@@ -69,13 +68,20 @@ def calculate_overall_risk(results):
     return round(total / len(results)) if len(results) > 0 else 0
 
 def classify_contract(text):
-    prompt = f"Classify this document (e.g. Employment Agreement). Return 1-3 words. Text: {text[:400]}"
+    prompt = f"Classify this legal document type (e.g. Employment Agreement). Return ONLY the name. Text: {text[:400]}"
     return call_llm(prompt, is_json=False)
 
 def generate_executive_summary(full_text):
-    prompt = f"Summarize risks for an Indian SME in 3 bullets. Text: {full_text[:3000]}"
+    # FIXED PROMPT: Explicitly tells AI to summarize the TEXT, not itself.
+    prompt = f"""
+    Read the following contract text and provide a 3-bullet executive summary of the KEY RISKS and TERMS for the signing party.
+    Do NOT introduce yourself. Just give the bullets.
+    
+    CONTRACT TEXT:
+    {full_text[:3000]}
+    """
     return call_llm(prompt, is_json=False)
 
 def get_chat_response(context, query):
-    prompt = f"Context: {context[:4000]}\nQuery: {query}\nAnswer briefly."
+    prompt = f"Context: {context[:4000]}\nQuery: {query}\nAnswer briefly based on context."
     return call_llm(prompt, is_json=False)

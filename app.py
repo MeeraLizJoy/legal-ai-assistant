@@ -14,27 +14,13 @@ from utils import format_entities, generate_pdf_report
 # --- CSS STYLING ---
 st.markdown("""
 <style>
-    /* Risk cards */
     .risk-high {background-color: #ffe6e6; border-left: 5px solid #ff4b4b; padding: 15px; border-radius: 5px; margin-bottom: 10px;}
     .risk-medium {background-color: #fff4e5; border-left: 5px solid #ffa421; padding: 15px; border-radius: 5px; margin-bottom: 10px;}
     .risk-low {background-color: #e6f9e6; border-left: 5px solid #09ab3b; padding: 15px; border-radius: 5px; margin-bottom: 10px;}
-    
-    /* Modality Badges */
-    .badge {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: bold;
-        text-transform: uppercase;
-        margin-left: 8px;
-    }
+    .badge {display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-left: 8px;}
     .badge-obligation {background-color: #e3f2fd; color: #1565c0; border: 1px solid #1565c0;}
     .badge-right {background-color: #e8f5e9; color: #2e7d32; border: 1px solid #2e7d32;}
     .badge-prohibition {background-color: #ffebee; color: #c62828; border: 1px solid #c62828;}
-    .badge-definition {background-color: #f5f5f5; color: #616161; border: 1px solid #616161;}
-    
-    /* Ambiguity Badge */
     .badge-ambiguous {background-color: #fff8e1; color: #f57f17; border: 1px dashed #f57f17;}
 </style>
 """, unsafe_allow_html=True)
@@ -68,6 +54,7 @@ with st.sidebar:
 if 'analysis_results' not in st.session_state: st.session_state.analysis_results = None
 if 'audit_json' not in st.session_state: st.session_state.audit_json = None
 if 'pdf_bytes' not in st.session_state: st.session_state.pdf_bytes = None
+if 'summary' not in st.session_state: st.session_state.summary = None  # <--- ADD THIS LINE
 
 if uploaded_file:
     # 1. PROCESS
@@ -78,9 +65,11 @@ if uploaded_file:
         st.session_state.doc_type = classify_contract(raw_text)
         st.session_state.entities = format_entities(get_entities(raw_text))
         st.session_state.last_file = uploaded_file.name
+        # Reset results on new file
         st.session_state.analysis_results = None
         st.session_state.pdf_bytes = None
         st.session_state.audit_json = None
+        st.session_state.summary = None # Reset summary
 
     # 2. DASHBOARD
     st.title(f"📄 Analysis: {st.session_state.doc_type}")
@@ -108,20 +97,27 @@ if uploaded_file:
                 
                 st.session_state.analysis_results = results
                 st.session_state.risk_score = calculate_overall_risk(results)
+                
+                # Generate Summary ONCE here
+                st.session_state.summary = generate_executive_summary(st.session_state.contract_text)
             
             # REPORTS
-            if not st.session_state.pdf_bytes or not st.session_state.audit_json:
-                with st.spinner("📄 Finalizing Reports..."):
-                    st.session_state.audit_json = save_audit_log(st.session_state.doc_type, st.session_state.risk_score, st.session_state.analysis_results)
-                    summary = generate_executive_summary(st.session_state.contract_text)
-                    st.session_state.pdf_bytes = generate_pdf_report(st.session_state.doc_type, summary, st.session_state.analysis_results, st.session_state.risk_score)
+            if not st.session_state.pdf_bytes:
+                st.session_state.audit_json = save_audit_log(st.session_state.doc_type, st.session_state.risk_score, st.session_state.analysis_results)
+                st.session_state.pdf_bytes = generate_pdf_report(st.session_state.doc_type, st.session_state.summary, st.session_state.analysis_results, st.session_state.risk_score)
 
-            # RESULTS
+            # --- DISPLAY SECTION ---
+            
+            # 1. Score
             score = st.session_state.risk_score
             color = "#ff4b4b" if score > 70 else "#ffa421" if score > 30 else "#09ab3b"
             st.markdown(f'<div style="text-align:center"><h1 style="color:{color}; font-size:64px; margin:0">{score}/100</h1><p>Risk Score</p></div>', unsafe_allow_html=True)
             
-            # CHECKLIST
+            # 2. Executive Summary (FIXED: Now inside an expander so it doesn't take up whole screen)
+            with st.expander("📄 Executive Summary", expanded=True):
+                st.write(st.session_state.summary)
+
+            # 3. Checklist
             st.subheader("📋 Key Clause Checklist")
             def check(keyword):
                 for r in st.session_state.analysis_results:
@@ -138,22 +134,19 @@ if uploaded_file:
 
             st.divider()
             
-            # --- DETAILED ANALYSIS WITH BADGES ---
+            # 4. Detailed Analysis
             st.subheader("🧐 Clause-by-Clause Analysis")
             
             for r in st.session_state.analysis_results:
-                # Get Data
                 risk = r['analysis'].get('label', 'Low')
                 ctype = r['analysis'].get('clause_type', 'General')
-                modality = r['analysis'].get('modality', 'OBLIGATION').upper() # Default to OBLIGATION if missing
+                modality = r['analysis'].get('modality', 'OBLIGATION').upper()
                 ambiguous = r['analysis'].get('is_ambiguous', False)
                 deviation = r['analysis'].get('deviation', 'None')
                 
-                # Create Badges HTML
                 modality_html = f'<span class="badge badge-{modality.lower()}">{modality}</span>'
                 ambig_html = '<span class="badge badge-ambiguous">⚠️ AMBIGUOUS</span>' if ambiguous else ""
                 
-                # Render
                 with st.expander(f"[{risk.upper()}] {ctype}: {r['header']}"):
                     st.markdown(f"""
                         <div class="risk-{risk.lower()}">
