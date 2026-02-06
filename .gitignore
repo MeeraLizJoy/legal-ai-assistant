@@ -1,0 +1,20 @@
+# --- Security (Never commit these!) ---
+.env
+.env.local
+
+# --- Python Cache (Compiled files) ---
+__pycache__/
+*.pyc
+
+# --- Virtual Environments ---
+.venv/
+venv/
+env/
+
+# --- Local Data (Your Audit Trails) ---
+audit_logs/
+*.json
+
+# --- OS Generated Files ---
+.DS_Store
+Thumbs.db
